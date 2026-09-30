@@ -91,6 +91,93 @@
       --t-slow: 1s;
     }
 
+    /* Minimal Preloader Overlay */
+    html.is-loading,
+    body.is-loading {
+      overflow: hidden !important;
+      height: 100% !important;
+    }
+
+    body.is-loading .hero-text {
+      opacity: 0 !important;
+      animation: none !important;
+    }
+
+    #loader {
+      position: fixed;
+      inset: 0;
+      z-index: 100000;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 1;
+      transition: opacity var(--t-med) var(--ease);
+      pointer-events: auto;
+    }
+
+    #loader.is-hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .loader-inner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .loader-logo {
+      display: block;
+      height: 28px;
+      width: auto;
+      margin-bottom: 24px;
+    }
+
+    .loader-track {
+      width: 160px;
+      height: 1px;
+      background: var(--line);
+      position: relative;
+      overflow: hidden;
+      border-radius: 0;
+    }
+
+    .loader-bar {
+      width: 100%;
+      height: 100%;
+      background: var(--ink);
+      transform: scaleX(0);
+      transform-origin: left center;
+      transition: transform 0.2s ease-out;
+      border-radius: 0;
+    }
+
+    .loader-counter {
+      margin-top: 12px;
+      font-family: var(--head);
+      font-size: 11px;
+      line-height: 1;
+      letter-spacing: 0.16em;
+      color: var(--muted);
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #loader {
+        transition: none !important;
+      }
+      .loader-bar {
+        transition: none !important;
+      }
+      body.is-loading .hero-text {
+        opacity: 1 !important;
+        animation: none !important;
+      }
+    }
+
     *,
     *::before,
     *::after {
@@ -2634,13 +2721,30 @@
       }
     }
   </style>
+  <noscript>
+    <style>
+      #loader { display: none !important; }
+      html.is-loading, body.is-loading { overflow: auto !important; height: auto !important; }
+      body.is-loading .hero-text { opacity: 1 !important; animation: none !important; }
+    </style>
+  </noscript>
 </head>
 
-<body>
+<body class="is-loading">
+  <!-- Minimal Loading Screen -->
+  <div id="loader" class="loader" aria-live="polite" aria-label="Loading">
+    <div class="loader-inner">
+      <img src="img/logo.png" alt="Nan" class="loader-logo" width="51" height="28" decoding="async">
+      <div class="loader-track">
+        <div class="loader-bar" id="loader-bar"></div>
+      </div>
+      <span class="loader-counter" id="loader-counter">0%</span>
+    </div>
+  </div>
 
   <header class="bar" id="bar">
     <a class="mark" href="#home" aria-label="Nan, home"><img src="img/logo.png" alt="Nan" height="28"
-        onerror="this.replaceWith(document.createTextNode('NAN'))"></a>
+        decoding="async" onerror="this.replaceWith(document.createTextNode('NAN'))"></a>
     <nav aria-label="Main">
       <a href="#home">Home</a>
       <a href="#about">About</a>
@@ -2672,7 +2776,7 @@
       </div>
       <div class="hero-text">
         <h1><img class="hero-logo" src="img/logo.png" alt="Photography by Nan, Phnom Penh"
-            onerror="this.replaceWith(document.createTextNode('Nan'))"></h1>
+            decoding="async" onerror="this.replaceWith(document.createTextNode('Nan'))"></h1>
         <p>Photography</p>
       </div>
     </section>
@@ -2686,7 +2790,7 @@
         <div class="portrait">
           <picture>
             <source srcset="img/about.webp" type="image/webp">
-            <img src="img/about.jpg" alt="Portrait of Nan" width="1125" height="2000" loading="lazy"
+            <img src="img/about.jpg" alt="Portrait of Nan" width="1125" height="2000"
               decoding="async" onload="this.classList.add('is-loaded')" onerror="this.remove()">
           </picture>
         </div>
@@ -2801,7 +2905,7 @@
               <picture>
                 <source srcset="img/architecture-02.webp" type="image/webp">
                 <img src="img/architecture-02.jpg" alt="Architecture 02, Place here" width="1500" height="2000"
-                  style="object-fit:contain" loading="lazy" decoding="async" onload="this.classList.add('is-loaded')">
+                  style="object-fit:contain" decoding="async" onload="this.classList.add('is-loaded')">
               </picture>
             </div>
           </div>
@@ -2819,7 +2923,7 @@
             <div class="tile-media">
               <picture>
                 <source srcset="img/architecture-03.webp" type="image/webp">
-                <img src="img/architecture-03.jpg" alt="Architecture 03, Phnom Penh" width="1125" height="2000" loading="lazy"
+                <img src="img/architecture-03.jpg" alt="Architecture 03, Phnom Penh" width="1125" height="2000"
                   decoding="async" onload="this.classList.add('is-loaded')">
               </picture>
             </div>
@@ -2837,7 +2941,7 @@
             <div class="tile-media">
               <picture>
                 <source srcset="img/street-01.webp" type="image/webp">
-                <img src="img/street-01.jpg" alt="Street 01, Phnom Penh" width="1080" height="964" loading="lazy"
+                <img src="img/street-01.jpg" alt="Street 01, Phnom Penh" width="1080" height="964"
                   decoding="async" onload="this.classList.add('is-loaded')">
               </picture>
             </div>
@@ -2855,7 +2959,7 @@
             <div class="tile-media">
               <picture>
                 <source srcset="img/landscape-02.webp" type="image/webp">
-                <img src="img/landscape-02.jpg" alt="Landscape 02, Kampong Speu" width="2000" height="1125" loading="lazy"
+                <img src="img/landscape-02.jpg" alt="Landscape 02, Kampong Speu" width="2000" height="1125"
                   decoding="async" onload="this.classList.add('is-loaded')">
               </picture>
             </div>
@@ -2873,7 +2977,7 @@
             <div class="tile-media">
               <picture>
                 <source srcset="img/portrait-02.webp" type="image/webp">
-                <img src="img/portrait-02.jpg" alt="Portrait 02, Phnom Penh" width="1333" height="2000" loading="lazy"
+                <img src="img/portrait-02.jpg" alt="Portrait 02, Phnom Penh" width="1333" height="2000"
                   decoding="async" onload="this.classList.add('is-loaded')">
               </picture>
             </div>
@@ -2894,7 +2998,7 @@
             <div class="tile-media">
               <picture>
                 <source srcset="img/architecture-04.webp" type="image/webp">
-                <img src="img/architecture-04.jpg" alt="Architecture 04, Phnom Penh" width="2000" height="1500" loading="lazy"
+                <img src="img/architecture-04.jpg" alt="Architecture 04, Phnom Penh" width="2000" height="1500"
                   decoding="async" onload="this.classList.add('is-loaded')">
               </picture>
             </div>
@@ -2915,7 +3019,7 @@
             <div class="tile-media">
               <picture>
                 <source srcset="img/street-02.webp" type="image/webp">
-                <img src="img/street-02.jpg" alt="Street 02, Phnom Penh" width="1125" height="2000" loading="lazy"
+                <img src="img/street-02.jpg" alt="Street 02, Phnom Penh" width="1125" height="2000"
                   decoding="async" onload="this.classList.add('is-loaded')">
               </picture>
             </div>
@@ -3233,7 +3337,6 @@
             var img = document.createElement('img');
             img.src = item.file;
             img.alt = (item.title || '') + (item.place ? ', ' + item.place : '');
-            img.loading = 'lazy';
             img.decoding = 'async';
             if (item.fit) img.style.objectFit = item.fit;
             tile.appendChild(img);
@@ -3759,13 +3862,14 @@
         });
       }, { threshold: [0.08, 0.25], rootMargin: '0px 0px -20% 0px' });
 
-      revealTargets.forEach(function (el) { sharedObserver.observe(el); });
+      // Shared IntersectionObserver for active nav highlight; revealTargets observed after loader finishes
       ids.forEach(function (id) {
         var el = document.getElementById(id);
         if (el) sharedObserver.observe(el);
       });
 
       // Hero slideshow
+      var isLoaderDismissed = false;
       var heroSlidesContainer = document.getElementById('hero-slides');
       var heroCandidates = [];
       var slides = heroSlidesContainer ? Array.from(heroSlidesContainer.querySelectorAll('.hero-slide')) : [];
@@ -3812,12 +3916,13 @@
 
       function scheduleSlide() {
         clearTimeout(slideTimer);
-        if (slides.length > 1 && !isReducedMotion && !document.hidden) {
+        if (slides.length > 1 && !isReducedMotion && !document.hidden && isLoaderDismissed) {
           slideTimer = setTimeout(advanceSlide, slideDuration);
         }
       }
 
       function startSlideshow() {
+        if (!isLoaderDismissed) return;
         if (slides.length > 1 && !isReducedMotion && !document.hidden) {
           heroSlidesContainer.classList.add('is-slideshow');
           scheduleSlide();
@@ -3838,7 +3943,6 @@
             var img = document.createElement('img');
             img.src = src;
             img.alt = 'Hero background photo';
-            img.loading = 'lazy';
             img.decoding = 'async';
             slide.appendChild(img);
             heroSlidesContainer.appendChild(slide);
@@ -4398,6 +4502,240 @@
           }
         });
       });
+
+      /* ==========================================================================
+         IMAGE PRELOADER & LOADING SCREEN
+         ========================================================================== */
+      var isPageAnimationsStarted = false;
+
+      function startPageAnimations() {
+        if (isPageAnimationsStarted) return;
+        isPageAnimationsStarted = true;
+
+        if (typeof sharedObserver !== 'undefined' && revealTargets) {
+          revealTargets.forEach(function (el) {
+            sharedObserver.observe(el);
+          });
+        }
+
+        document.querySelectorAll('.tile img, .portrait img').forEach(function (img) {
+          if (img.complete && img.naturalWidth > 0) {
+            img.classList.add('is-loaded');
+          }
+        });
+
+        if (typeof updateMobileMode === 'function') {
+          updateMobileMode();
+        }
+
+        if (typeof startSlideshow === 'function') {
+          startSlideshow();
+        }
+      }
+
+      function dismissLoader() {
+        if (isLoaderDismissed) return;
+        isLoaderDismissed = true;
+
+        if (loaderSafetyTimer) {
+          clearTimeout(loaderSafetyTimer);
+          loaderSafetyTimer = null;
+        }
+
+        var loaderEl = document.getElementById('loader');
+        var isReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        function completeDismissal() {
+          if (loaderEl && loaderEl.parentNode) {
+            loaderEl.parentNode.removeChild(loaderEl);
+          }
+          document.body.classList.remove('is-loading');
+          document.documentElement.classList.remove('is-loading');
+          startPageAnimations();
+        }
+
+        if (!loaderEl || isReduced) {
+          completeDismissal();
+        } else {
+          loaderEl.classList.add('is-hidden');
+          var transitioned = false;
+          function handleTransitionEnd(e) {
+            if (e && e.target !== loaderEl) return;
+            loaderEl.removeEventListener('transitionend', handleTransitionEnd);
+            if (!transitioned) {
+              transitioned = true;
+              completeDismissal();
+            }
+          }
+          loaderEl.addEventListener('transitionend', handleTransitionEnd);
+          setTimeout(function () {
+            if (!transitioned) {
+              transitioned = true;
+              completeDismissal();
+            }
+          }, 650);
+        }
+      }
+
+      var loaderSafetyTimer = setTimeout(dismissLoader, 12000);
+
+      function initImagePreloader() {
+        try {
+          var loaderEl = document.getElementById('loader');
+          var progressBar = document.getElementById('loader-bar');
+          var counterEl = document.getElementById('loader-counter');
+
+          var startTime = (window.performance && performance.now) ? performance.now() : Date.now();
+          var isRepeatVisit = false;
+          try {
+            isRepeatVisit = !!sessionStorage.getItem('nan_visited');
+            sessionStorage.setItem('nan_visited', '1');
+          } catch (e) {}
+
+          var MIN_DURATION = isRepeatVisit ? 0 : 400;
+
+          var urls = [];
+          var seen = {};
+
+          function addUrl(src) {
+            if (!src || typeof src !== 'string') return;
+            src = src.trim();
+            if (!src || seen[src]) return;
+            seen[src] = true;
+            urls.push(src);
+          }
+
+          function getDisplayedUrl(img) {
+            if (!img) return null;
+            var pic = img.closest('picture');
+            if (pic) {
+              var source = pic.querySelector('source[type="image/webp"]');
+              if (source && source.srcset) {
+                return source.srcset.split(',')[0].trim().split(' ')[0];
+              }
+            }
+            return img.getAttribute('src');
+          }
+
+          // 1. Hero first (and logo)
+          var logoImg = document.querySelector('.loader-logo') || document.querySelector('.mark img');
+          if (logoImg) {
+            addUrl(logoImg.getAttribute('src') || 'img/logo.png');
+          } else {
+            addUrl('img/logo.png');
+          }
+
+          var heroImgs = document.querySelectorAll('#hero-slides img');
+          heroImgs.forEach(function (img) {
+            addUrl(getDisplayedUrl(img));
+          });
+
+          // 2. About image
+          var aboutImg = document.querySelector('.about img');
+          if (aboutImg) {
+            addUrl(getDisplayedUrl(aboutImg));
+          }
+
+          // 3. Gallery tiles in page order
+          var tiles = document.querySelectorAll('#grid .tile');
+          tiles.forEach(function (tile) {
+            var img = tile.querySelector('img');
+            if (img) {
+              addUrl(getDisplayedUrl(img));
+            }
+          });
+
+          // 4. Project sets (data-gallery)
+          var isSaveData = false;
+          try {
+            if (navigator.connection && navigator.connection.saveData) {
+              isSaveData = true;
+            }
+          } catch (e) {}
+
+          if (!isSaveData) {
+            tiles.forEach(function (tile) {
+              var gal = tile.getAttribute('data-gallery');
+              if (gal) {
+                gal.split(',').forEach(function (item) {
+                  addUrl(item);
+                });
+              }
+            });
+          }
+
+          var total = urls.length;
+          if (total === 0) {
+            dismissLoader();
+            return;
+          }
+
+          var loadedCount = 0;
+          var cursor = 0;
+          var activeDownloads = 0;
+          var CONCURRENCY = 6;
+
+          function setProgress(count) {
+            var pct = Math.min(100, Math.round((count / total) * 100));
+            if (progressBar) {
+              progressBar.style.transform = 'scaleX(' + (pct / 100) + ')';
+            }
+            if (counterEl) {
+              counterEl.textContent = pct + '%';
+            }
+          }
+
+          function finish() {
+            var now = (window.performance && performance.now) ? performance.now() : Date.now();
+            var elapsed = now - startTime;
+            var remaining = MIN_DURATION - elapsed;
+            if (remaining > 0) {
+              setTimeout(dismissLoader, remaining);
+            } else {
+              dismissLoader();
+            }
+          }
+
+          function loadNext() {
+            while (activeDownloads < CONCURRENCY && cursor < total) {
+              var url = urls[cursor++];
+              activeDownloads++;
+              (function (imgUrl) {
+                var img = new Image();
+                var resolved = false;
+                function onImageDone() {
+                  if (resolved) return;
+                  resolved = true;
+                  activeDownloads--;
+                  loadedCount++;
+                  setProgress(loadedCount);
+                  if (loadedCount >= total) {
+                    finish();
+                  } else {
+                    loadNext();
+                  }
+                }
+
+                if (img.decode) {
+                  img.src = imgUrl;
+                  img.decode().then(onImageDone).catch(onImageDone);
+                  img.onerror = onImageDone;
+                } else {
+                  img.onload = onImageDone;
+                  img.onerror = onImageDone;
+                  img.src = imgUrl;
+                }
+              })(url);
+            }
+          }
+
+          loadNext();
+        } catch (err) {
+          dismissLoader();
+        }
+      }
+
+      initImagePreloader();
     })();
   </script>
   <!-- EDIT: create a free account at goatcounter.com, replace YOUR-CODE with your site code -->
