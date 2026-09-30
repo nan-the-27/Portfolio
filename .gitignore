@@ -1,0 +1,37 @@
+# Environment and secrets
+.env*
+*.key
+*.pem
+secrets*
+
+# Dependencies and backend
+node_modules/
+server/
+
+# Raw camera and design files
+*.psd
+*.raw
+*.cr2
+*.cr3
+*.arw
+*.nef
+*.dng
+originals/
+raw/
+private/
+backup*/
+*.zip
+*.log
+
+# Operating system files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE and editor configurations
+.vscode/
+.idea/
+
+# Local build and scratch directories
+scratch/
+exif_report.txt

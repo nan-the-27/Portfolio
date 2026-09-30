@@ -1,0 +1,5 @@
+# EDIT: replace placeholder URL with your real published site URL
+User-agent: *
+Allow: /
+
+Sitemap: https://nan-the-27.github.io/Portfolio/sitemap.xml
