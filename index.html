@@ -169,9 +169,11 @@
       #loader {
         transition: none !important;
       }
+
       .loader-bar {
         transition: none !important;
       }
+
       body.is-loading .hero-text {
         opacity: 1 !important;
         animation: none !important;
@@ -2728,6 +2730,7 @@
     }
 
     @media (min-width: 481px) {
+
       button,
       .btn {
         white-space: nowrap;
@@ -2735,6 +2738,7 @@
     }
 
     @media (max-width: 480px) {
+
       button,
       .btn {
         white-space: normal;
@@ -2754,9 +2758,20 @@
   </style>
   <noscript>
     <style>
-      #loader { display: none !important; }
-      html.is-loading, body.is-loading { overflow: auto !important; height: auto !important; }
-      body.is-loading .hero-text { opacity: 1 !important; animation: none !important; }
+      #loader {
+        display: none !important;
+      }
+
+      html.is-loading,
+      body.is-loading {
+        overflow: auto !important;
+        height: auto !important;
+      }
+
+      body.is-loading .hero-text {
+        opacity: 1 !important;
+        animation: none !important;
+      }
     </style>
   </noscript>
 </head>
@@ -2774,8 +2789,8 @@
   </div>
 
   <header class="bar" id="bar">
-    <a class="mark" href="#home" aria-label="Nan, home"><img src="img/logo.png" alt="Nan" height="28"
-        decoding="async" onerror="this.replaceWith(document.createTextNode('NAN'))"></a>
+    <a class="mark" href="#home" aria-label="Nan, home"><img src="img/logo.png" alt="Nan" height="28" decoding="async"
+        onerror="this.replaceWith(document.createTextNode('NAN'))"></a>
     <nav aria-label="Main">
       <a href="#home">Home</a>
       <a href="#about">About</a>
@@ -2801,13 +2816,14 @@
           <!-- EDIT: set data-tone per hero slide to match the photo -->
           <picture>
             <source srcset="img/hero.webp" type="image/webp">
-            <img src="img/hero.jpg" alt="Hero background photo" width="2400" height="1350" fetchpriority="high" decoding="async">
+            <img src="img/hero.jpg" alt="Hero background photo" width="2400" height="1350" fetchpriority="high"
+              decoding="async">
           </picture>
         </div>
       </div>
       <div class="hero-text">
-        <h1><img class="hero-logo" src="img/logo.png" alt="Photography by Nan, Phnom Penh"
-            decoding="async" onerror="this.replaceWith(document.createTextNode('Nan'))"></h1>
+        <h1><img class="hero-logo" src="img/logo.png" alt="Photography by Nan, Phnom Penh" decoding="async"
+            onerror="this.replaceWith(document.createTextNode('Nan'))"></h1>
         <p>Photography</p>
       </div>
     </section>
@@ -2821,8 +2837,8 @@
         <div class="portrait">
           <picture>
             <source srcset="img/about.webp" type="image/webp">
-            <img src="img/about.jpg" alt="Portrait of Nan" width="1125" height="2000"
-              decoding="async" onload="this.classList.add('is-loaded')" onerror="this.remove()">
+            <img src="img/about.jpg" alt="Portrait of Nan" width="1125" height="2000" decoding="async"
+              onload="this.classList.add('is-loaded')" onerror="this.remove()">
           </picture>
         </div>
         <div class="about-bio">
@@ -2832,8 +2848,9 @@
             chasing new places and fresh environments.</p>
           <p>His experience ranges from graduation shoots to field trip documentation, with a special love for close-up
             portraits, landscapes, architectural shoots, and street photography.</p>
-          <p>In his spare time, Nan works as a freelance photographer and videographer. Beyond the lens, he enjoys
-            tinkering with new and exciting coding technologies.</p>
+          <p>In his spare time, Nan works as a freelance photographer and videographer. Beyond the lens, Nan likes to
+            tinker with code. He's still learning, and he has fun exploring every new way to build things.<br>Fact this
+            website was created <b>by Nan himself</b>, as part of his coding hobby.</p>
           <p class="about-sublead">Photography isn't just a job for me, it's my favorite thing to do.</p>
           <div class="about-tags">
             <span class="tag-label">What I love shooting</span>
@@ -2879,7 +2896,8 @@
             <div class="tile-media">
               <picture>
                 <source srcset="img/landscape-01.webp" type="image/webp">
-                <img src="img/landscape-01.jpg" alt="Nan at the sea, Phnom Penh" width="2000" height="1125" decoding="async" onload="this.classList.add('is-loaded')">
+                <img src="img/landscape-01.jpg" alt="Nan at the sea, Phnom Penh" width="2000" height="1125"
+                  decoding="async" onload="this.classList.add('is-loaded')">
               </picture>
             </div>
           </div>
@@ -2896,7 +2914,8 @@
             <div class="tile-media">
               <picture>
                 <source srcset="img/portrait-01.webp" type="image/webp">
-                <img src="img/portrait-01.jpg" alt="Portrait 01, Phnom Penh" width="1500" height="2000" decoding="async" onload="this.classList.add('is-loaded')">
+                <img src="img/portrait-01.jpg" alt="Portrait 01, Phnom Penh" width="1500" height="2000" decoding="async"
+                  onload="this.classList.add('is-loaded')">
               </picture>
             </div>
           </div>
@@ -2916,7 +2935,8 @@
             <div class="tile-media">
               <picture>
                 <source srcset="img/architecture-01.webp" type="image/webp">
-                <img src="img/architecture-01.jpg" alt="Architecture 01, Phnom Penh" width="1500" height="2000" decoding="async" onload="this.classList.add('is-loaded')">
+                <img src="img/architecture-01.jpg" alt="Architecture 01, Phnom Penh" width="1500" height="2000"
+                  decoding="async" onload="this.classList.add('is-loaded')">
               </picture>
             </div>
           </div>
@@ -2972,8 +2992,8 @@
             <div class="tile-media">
               <picture>
                 <source srcset="img/street-01.webp" type="image/webp">
-                <img src="img/street-01.jpg" alt="Street 01, Phnom Penh" width="1080" height="964"
-                  decoding="async" onload="this.classList.add('is-loaded')">
+                <img src="img/street-01.jpg" alt="Street 01, Phnom Penh" width="1080" height="964" decoding="async"
+                  onload="this.classList.add('is-loaded')">
               </picture>
             </div>
           </div>
@@ -3008,8 +3028,8 @@
             <div class="tile-media">
               <picture>
                 <source srcset="img/portrait-02.webp" type="image/webp">
-                <img src="img/portrait-02.jpg" alt="Portrait 02, Phnom Penh" width="1333" height="2000"
-                  decoding="async" onload="this.classList.add('is-loaded')">
+                <img src="img/portrait-02.jpg" alt="Portrait 02, Phnom Penh" width="1333" height="2000" decoding="async"
+                  onload="this.classList.add('is-loaded')">
               </picture>
             </div>
           </div>
@@ -3050,8 +3070,8 @@
             <div class="tile-media">
               <picture>
                 <source srcset="img/street-02.webp" type="image/webp">
-                <img src="img/street-02.jpg" alt="Street 02, Phnom Penh" width="1125" height="2000"
-                  decoding="async" onload="this.classList.add('is-loaded')">
+                <img src="img/street-02.jpg" alt="Street 02, Phnom Penh" width="1125" height="2000" decoding="async"
+                  onload="this.classList.add('is-loaded')">
               </picture>
             </div>
           </div>
@@ -3262,8 +3282,8 @@
               </div>
               <div class="field"><label for="c-phone">Phone number</label><input id="c-phone" name="phone" type="tel"
                   autocomplete="tel" maxlength="30"></div>
-              <div class="field"><label for="c-msg">Message *</label><textarea id="c-msg" name="message"
-                  required maxlength="2000"></textarea></div>
+              <div class="field"><label for="c-msg">Message *</label><textarea id="c-msg" name="message" required
+                  maxlength="2000"></textarea></div>
               <input class="hp" type="text" name="botcheck" tabindex="-1" autocomplete="off" aria-hidden="true">
               <button class="btn" type="submit">Submit</button>
               <p class="status" role="status"></p>
@@ -4225,7 +4245,7 @@
           updateMobileMode();
           computePhotoSizes();
         });
-      } catch (e) {}
+      } catch (e) { }
 
       window.addEventListener('load', function () {
         lastResizeWidth = window.innerWidth;
@@ -4316,7 +4336,7 @@
           var afterNextIdx = (nextIdx + 1) % slides.length;
           var afterNextImg = slides[afterNextIdx] ? slides[afterNextIdx].querySelector('img') : null;
           if (afterNextImg && afterNextImg.decode) {
-            afterNextImg.decode().catch(function () {});
+            afterNextImg.decode().catch(function () { });
           }
 
           scheduleSlide();
@@ -5005,7 +5025,7 @@
           try {
             isRepeatVisit = !!sessionStorage.getItem('nan_visited');
             sessionStorage.setItem('nan_visited', '1');
-          } catch (e) {}
+          } catch (e) { }
 
           var MIN_DURATION = isRepeatVisit ? 0 : 400;
 
@@ -5066,7 +5086,7 @@
             if (navigator.connection && navigator.connection.saveData) {
               isSaveData = true;
             }
-          } catch (e) {}
+          } catch (e) { }
 
           if (!isSaveData) {
             tiles.forEach(function (tile) {
