@@ -200,7 +200,12 @@
       -webkit-text-size-adjust: 100%;
       scrollbar-width: none;
       -ms-overflow-style: none;
-      overflow-anchor: none
+      overflow-anchor: none;
+      scroll-padding-top: var(--bar-h, 52px);
+    }
+
+    html.snap-on {
+      scroll-snap-type: y mandatory;
     }
 
     body {
@@ -2096,8 +2101,22 @@
         min-height: auto !important;
       }
 
-      .cat-block.is-static-row .cat-footer {
-        display: none !important;
+      /* Step Sentinels behind pinned wrapper */
+      .cat-sentinels {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 1px;
+        height: 100%;
+        pointer-events: none;
+        opacity: 0;
+        z-index: -1;
+      }
+
+      .cat-step {
+        height: var(--step-h, 60svh);
+        scroll-snap-align: start;
+        scroll-snap-stop: always;
       }
 
       /* Sticky Pinned View */
@@ -2246,12 +2265,15 @@
         cursor: pointer;
         overflow: visible;
         opacity: 0.85;
-        transition: opacity 0.4s ease;
-        will-change: opacity;
+        transform: scale(0.97);
+        transform-origin: center center;
+        transition: opacity 0.5s var(--ease), transform 0.5s var(--ease);
+        will-change: transform, opacity;
       }
 
       .cat-strip .tile.is-center {
         opacity: 1;
+        transform: scale(1);
       }
 
       /* Remove fixed-height slot -- item width = photo width */
@@ -2336,9 +2358,29 @@
         line-height: 1.2;
       }
 
-      /* End Hint Card */
-      .cat-end-hint {
-        display: none;
+      /* Quiet Category End Hint */
+      .cat-hint {
+        font-family: var(--head);
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: .12em;
+        text-transform: uppercase;
+        color: var(--muted);
+        text-align: center;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 6px var(--pad) 4px;
+        opacity: 0;
+        transform: translateY(3px);
+        transition: opacity 0.4s var(--ease), transform 0.4s var(--ease);
+        pointer-events: none;
+        flex: 0 0 auto;
+        line-height: 1;
+      }
+
+      .cat-hint.is-visible {
+        opacity: 0.85;
+        transform: translateY(0);
       }
 
       /* Progress Bar & Counter Footer */
@@ -2431,6 +2473,23 @@
         opacity: 1 !important;
         transform: none !important;
         transition: none !important;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        html.snap-on {
+          scroll-snap-type: none !important;
+        }
+        .cat-step {
+          scroll-snap-align: none !important;
+        }
+        .cat-strip .tile {
+          opacity: 1 !important;
+          transform: none !important;
+          transition: none !important;
+        }
+        .cat-hint {
+          display: none !important;
+        }
       }
 
       /* Bottom Navigation Bar - removed */
@@ -3530,6 +3589,12 @@
           return a.localeCompare(b);
         });
 
+        var activeCats = sortedCats.filter(function (catKey) {
+          return originalTiles.some(function (t) {
+            return (t.getAttribute('data-c') || '').toLowerCase() === catKey;
+          });
+        });
+
         if (mobilePortfolio.children.length === 0) {
           // Spacer before the first category (below "Portfolio" title)
           var topSpacer = document.createElement('div');
@@ -3537,7 +3602,7 @@
           topSpacer.setAttribute('aria-hidden', 'true');
           mobilePortfolio.appendChild(topSpacer);
 
-          sortedCats.forEach(function (catKey, catIdx) {
+          activeCats.forEach(function (catKey, catIdx) {
             var catTiles = originalTiles.filter(function (t) {
               return (t.getAttribute('data-c') || '').toLowerCase() === catKey;
             });
@@ -3551,6 +3616,18 @@
             block.className = 'cat-block';
             block.setAttribute('data-category', catKey);
             block.setAttribute('data-tone', 'light');
+
+            // N + 1 invisible step sentinels behind pinned wrapper
+            var sentinelsWrap = document.createElement('div');
+            sentinelsWrap.className = 'cat-sentinels';
+            sentinelsWrap.setAttribute('aria-hidden', 'true');
+            for (var sIdx = 0; sIdx <= catTiles.length; sIdx++) {
+              var sEl = document.createElement('div');
+              sEl.className = 'cat-step';
+              sEl.setAttribute('data-step', sIdx);
+              sentinelsWrap.appendChild(sEl);
+            }
+            block.appendChild(sentinelsWrap);
 
             var sticky = document.createElement('div');
             sticky.className = 'cat-sticky';
@@ -3588,6 +3665,15 @@
 
             track.appendChild(strip);
             sticky.appendChild(track);
+
+            // Quiet hint under strip: "Scroll for Portraits" or "Scroll to continue"
+            var hintEl = document.createElement('div');
+            hintEl.className = 'cat-hint';
+            hintEl.setAttribute('aria-hidden', 'true');
+            var isLast = (catIdx === activeCats.length - 1);
+            var nextCatName = !isLast ? (catMap[activeCats[catIdx + 1]] || (activeCats[catIdx + 1].charAt(0).toUpperCase() + activeCats[catIdx + 1].slice(1))) : '';
+            hintEl.textContent = isLast ? 'Scroll to continue' : 'Scroll for ' + nextCatName;
+            sticky.appendChild(hintEl);
 
             var footer = document.createElement('div');
             footer.className = 'cat-footer';
@@ -3634,6 +3720,7 @@
           }
           mobilePortfolio.style.display = 'none';
           originalGrid.style.display = '';
+          updateSnapState();
           return;
         }
 
@@ -3677,6 +3764,7 @@
             var strip = block.querySelector('.cat-strip');
             if (strip) strip.style.transform = '';
           });
+          updateSnapState();
           return;
         }
 
@@ -3684,33 +3772,53 @@
       }
 
       /* ---- Scroll engine constants (tweak here) ---- */
-      var SCROLL_SPEED = 2.1;          // px of page scroll per 1 px of strip movement (--speed)
+      var STEP_H = '60svh';            // step sentinel height (one constant you can tweak: '60svh' or 60)
       var SMOOTH_MS = 140;             // time constant in ms for frame-rate independent easing
-      var HOLD_START = 0.12;           // fraction of svh to hold before first photo moves (12%)
-      var HOLD_END = 0.30;             // fraction of svh to hold after last photo arrives (at least 30%)
-      var EASE_ZONE = 0.10;            // first 10% and last 10% of progress get ease-in-out curve
-      var MAX_VELOCITY_RATIO = 0.035;  // max strip movement per frame as fraction of viewport width (3.5%)
-      var MIN_CATCHUP_RATIO = 0.015;   // min catchup speed per frame when lagging > 1px (1.5% of vw)
-      var LERP_THRESHOLD = 0.1;        // px difference to stop the rAF loop
+
+      function getStepHPx(svh) {
+        var h = svh || Math.min(window.innerHeight, document.documentElement.clientHeight || window.innerHeight);
+        if (typeof STEP_H === 'number') {
+          return Math.round(STEP_H <= 1 ? h * STEP_H : h * (STEP_H / 100));
+        }
+        var val = parseFloat(STEP_H);
+        if (String(STEP_H).indexOf('px') !== -1) return Math.round(val);
+        return Math.round(h * (val / 100));
+      }
 
       // Per-block runtime state
-      // block._smooth = { current, target, running }
       var smoothRafId = null;
       var lastFrameTime = 0;
-      var activeBlocks = new Set();  // blocks currently near viewport (via IntersectionObserver)
+      var activeBlocks = new Set();  // blocks currently near viewport (via blockObserver)
       var lastResizeWidth = 0;
       var lastResizeHeight = 0;
+      var isLightboxOpen = false;
+      var snapObserver = null;
+      var intersectingSnapBlocks = new Set();
+
+      function updateSnapState() {
+        if (window.innerWidth > 768 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          document.documentElement.classList.remove('snap-on');
+          return;
+        }
+        if (!isLightboxOpen && intersectingSnapBlocks.size > 0) {
+          document.documentElement.classList.add('snap-on');
+        } else {
+          document.documentElement.classList.remove('snap-on');
+        }
+      }
 
       function computePhotoSizes() {
         if (window.innerWidth > 768) return;
         if (!isMobileActive) updateMobileMode();
         var vw = window.innerWidth;
         var svh = Math.min(window.innerHeight, document.documentElement.clientHeight || window.innerHeight);
+        var stepHPx = getStepHPx(svh);
 
         // Measure top bar
         var barEl = document.getElementById('bar');
         var barH = barEl ? barEl.offsetHeight : 52;
         document.documentElement.style.setProperty('--bar-h', barH + 'px');
+        document.documentElement.style.setProperty('--step-h', (typeof STEP_H === 'number' ? STEP_H + 'svh' : STEP_H));
 
         var isReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -3727,13 +3835,8 @@
           var tiles = Array.from(strip.querySelectorAll('.tile'));
           if (tiles.length === 0) return;
 
-          // Save current progress ratio to restore after resize
-          var oldMaxScroll = parseFloat(block.dataset.maxScroll) || 0;
-          var oldSmooth = block._smooth;
-          var oldRatio = 0;
-          if (oldSmooth && oldMaxScroll > 0) {
-            oldRatio = oldSmooth.current / oldMaxScroll;
-          }
+          // Save current index to restore after resize so nothing jumps
+          var oldIdx = block._currentIdx !== undefined ? block._currentIdx : 0;
 
           var photoMeta = tiles.map(function (tile) {
             var img = tile.querySelector('img');
@@ -3793,6 +3896,12 @@
             }
           });
 
+          // Update sentinels height
+          var sentinels = block.querySelectorAll('.cat-step');
+          sentinels.forEach(function (s) {
+            s.style.height = stepHPx + 'px';
+          });
+
           if (isReduced) {
             block.style.height = '';
             block.classList.add('is-entered');
@@ -3800,7 +3909,7 @@
             return;
           }
 
-          // Compute true track width including left padding and right padding of var(--pad)
+          // Temporarily reset transform to measure true layout coordinates
           var curTransform = strip.style.transform;
           strip.style.transform = 'none';
 
@@ -3816,26 +3925,35 @@
           var lastTile = tiles[tiles.length - 1];
           var lastTileRect = lastTile ? lastTile.getBoundingClientRect() : null;
 
-          // track.scrollWidth including pad
           var scrollW = strip.scrollWidth;
           var lastPhotoRightEdge = lastTileRect ? (lastTileRect.right - stripRect.left) + pad : scrollW;
           var trueTrackWidth = Math.max(scrollW, lastPhotoRightEdge);
+          var maxX = Math.max(0, Math.round(trueTrackWidth - vw));
 
-          // Restore transform
-          strip.style.transform = curTransform || 'translate3d(0,0,0)';
+          // Compute photo centers and x_i targets
+          var photoCenters = tiles.map(function (tile) {
+            var r = tile.getBoundingClientRect();
+            return (r.left - stripRect.left) + r.width / 2;
+          });
 
-          var trackTravel = Math.max(0, Math.round(trueTrackWidth - vw));
-          block.dataset.scrollWidth = scrollW;
+          // x_i = clamp(photoCenter_i - viewportWidth / 2, 0, maxX)
+          var xTargets = photoCenters.map(function (center, idx) {
+            if (idx === 0) return 0;
+            if (idx === tiles.length - 1) return maxX;
+            var xi = Math.round(center - vw / 2);
+            return Math.max(0, Math.min(xi, maxX));
+          });
 
-          // If a category has few photos so maxX is 0 or tiny (all photos fit on screen),
-          // do not pin: show as normal static row, skip the hold
-          if (trackTravel <= 4) {
+          block._photoCount = tiles.length;
+          block._photoCenters = photoCenters;
+          block._xTargets = xTargets;
+          block._maxX = maxX;
+          block._pad = pad;
+
+          // If category has 1 photo or all photos fit on screen (maxX near 0),
+          // do not pin or snap: show as normal static row
+          if (tiles.length <= 1 || maxX <= 4) {
             block.style.height = 'auto';
-            block.dataset.maxScroll = '0';
-            block.dataset.holdStart = '0';
-            block.dataset.holdEnd = '0';
-            block.dataset.scrollTravel = '0';
-            block.dataset.totalPinned = '0';
             block.classList.add('is-static-row');
             strip.style.transform = 'translate3d(0, 0, 0)';
             var pBar = block.querySelector('.cat-progress-bar');
@@ -3843,71 +3961,40 @@
             var cEl = block.querySelector('.cat-counter');
             if (cEl && tiles.length) cEl.textContent = '1 / ' + tiles.length;
             tiles.forEach(function (t) { t.classList.add('is-center'); });
+            var sentinelsWrap = block.querySelector('.cat-sentinels');
+            if (sentinelsWrap) sentinelsWrap.style.display = 'none';
+            var hintEl = block.querySelector('.cat-hint');
+            if (hintEl) hintEl.classList.remove('is-visible');
             return;
           }
 
           block.classList.remove('is-static-row');
-
-          // Hold zones in px: holdEnd is at least 30% svh
-          var holdStartPx = Math.round(svh * HOLD_START);
-          var holdEndPx = Math.round(svh * HOLD_END);
+          var sentinelsWrap = block.querySelector('.cat-sentinels');
+          if (sentinelsWrap) sentinelsWrap.style.display = '';
 
           // Pinned wrapper height: height of the sticky element
           var stickyEl = block.querySelector('.cat-sticky');
           var pinnedWrapperHeight = stickyEl ? stickyEl.offsetHeight : svh;
 
-          // Block height = holdStart + (maxX * SPEED) + holdEnd + pinnedWrapperHeight
-          var scrollTravel = Math.round(trackTravel * SCROLL_SPEED);
-          var totalPinned = holdStartPx + scrollTravel + holdEndPx;
-          block.style.height = (totalPinned + pinnedWrapperHeight) + 'px';
-
-          block.dataset.maxScroll = trackTravel;
-          block.dataset.holdStart = holdStartPx;
-          block.dataset.holdEnd = holdEndPx;
-          block.dataset.scrollTravel = scrollTravel;
-          block.dataset.totalPinned = totalPinned;
+          // Block height = pinned wrapper height + N * STEP_H
+          block.style.height = (pinnedWrapperHeight + tiles.length * stepHPx) + 'px';
+          block.dataset.stepH = stepHPx;
           block.dataset.pinnedWrapperHeight = pinnedWrapperHeight;
 
-          // Tile center offsets for closest-tile detection
-          var stripLeft = strip.getBoundingClientRect().left;
-          block._tileOffsets = tiles.map(function (t) {
-            var r = t.getBoundingClientRect();
-            return (r.left - stripLeft) + r.width / 2;
-          });
-
-          // Initialize or restore smooth state
+          // Restore smooth state and keep index so nothing jumps
+          var targetX = xTargets[oldIdx] !== undefined ? xTargets[oldIdx] : 0;
           if (!block._smooth) {
-            block._smooth = { current: 0, target: 0, running: false };
+            block._smooth = { current: targetX, target: targetX };
+          } else {
+            block._smooth.current = targetX;
+            block._smooth.target = targetX;
           }
-          // Restore progress ratio after recompute so nothing jumps
-          if (oldMaxScroll > 0 && trackTravel > 0) {
-            var restored = Math.min(trackTravel, oldRatio * trackTravel);
-            block._smooth.current = restored;
-            block._smooth.target = restored;
-          }
+
+          strip.style.transform = 'translate3d(' + (-targetX).toFixed(1) + 'px, 0, 0)';
         });
 
         if (!isReduced) {
           computeTargets();
-        }
-      }
-
-      function easeProgress(p) {
-        if (p <= 0) return 0;
-        if (p >= 1) return 1;
-        var Z = EASE_ZONE; // 0.10
-        // k is the slope in the linear section such that f(1) = 1 with C1 continuity
-        var k = 1 / (1 - Z); // 1 / 0.9 = 1.1111...
-        if (p < Z) {
-          // Quadratic ease-in: slope starts at 0, smoothly accelerates to k
-          return 0.5 * k * (p * p / Z);
-        } else if (p > 1 - Z) {
-          // Quadratic ease-out: slope decelerates smoothly from k to 0
-          var u = (p - (1 - Z)) / Z;
-          return (1 - 0.5 * k * Z) + k * Z * (u - 0.5 * u * u);
-        } else {
-          // Linear in the middle
-          return 0.5 * k * Z + k * (p - Z);
         }
       }
 
@@ -3916,114 +4003,84 @@
         if (!isMobileActive) updateMobileMode();
         if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-        var vw = window.innerWidth;
-        var screenCenterX = vw / 2;
+        var barEl = document.getElementById('bar');
+        var barH = barEl ? barEl.offsetHeight : 52;
+        var svh = Math.min(window.innerHeight, document.documentElement.clientHeight || window.innerHeight);
+        var stepHPx = getStepHPx(svh);
 
         var blocksToUpdate = mobilePortfolio.querySelectorAll('.cat-block');
         blocksToUpdate.forEach(function (block) {
           if (block.classList.contains('is-static-row')) return;
+          var N = block._photoCount || 0;
+          if (!N) return;
 
           var rect = block.getBoundingClientRect();
-          var trackTravel = parseFloat(block.dataset.maxScroll) || 0;
-          var holdStartPx = parseFloat(block.dataset.holdStart) || 0;
-          var scrollTravel = parseFloat(block.dataset.scrollTravel) || 0;
-          var totalPinned = parseFloat(block.dataset.totalPinned) || 0;
-          var strip = block.querySelector('.cat-strip');
-          var progressBar = block.querySelector('.cat-progress-bar');
-          var counter = block.querySelector('.cat-counter');
-          var tiles = block.querySelectorAll('.tile');
+          // scrolled = how far block top has scrolled past sticky top (barH)
+          var scrolled = barH - rect.top;
+          // t = (scrollY - blockTop) / STEP_H = scrolled / stepHPx
+          var t = scrolled / stepHPx;
+
+          var maxX = block._maxX || 0;
+          var xTargets = block._xTargets || [];
+
+          // Target X: interpolate continuously between snap points
+          var targetX = 0;
+          if (t <= 0) {
+            targetX = 0;
+          } else if (t >= N - 1) {
+            targetX = maxX;
+          } else {
+            var i = Math.floor(t);
+            var frac = t - i;
+            var xA = xTargets[i] !== undefined ? xTargets[i] : 0;
+            var xB = xTargets[i + 1] !== undefined ? xTargets[i + 1] : maxX;
+            targetX = xA + frac * (xB - xA);
+          }
 
           if (!block._smooth) {
-            block._smooth = { current: 0, target: 0, running: false };
+            block._smooth = { current: targetX, target: targetX };
+          } else {
+            block._smooth.target = targetX;
           }
 
-          if (trackTravel <= 0) {
-            block._smooth.target = 0;
-            block._smooth.current = 0;
-            if (strip) strip.style.transform = 'translate3d(0, 0, 0)';
-            if (progressBar) progressBar.style.transform = 'scaleX(1)';
-            if (counter && tiles.length) counter.textContent = '1 / ' + tiles.length;
-            tiles.forEach(function (t) { t.classList.add('is-center'); });
-            return;
-          }
+          // Current photo index (0 to N-1)
+          var currentIdx = Math.max(0, Math.min(Math.round(t), N - 1));
+          block._currentIdx = currentIdx;
 
-          // scrolled = how far the block top has scrolled past the sticky top
-          var barEl = document.getElementById('bar');
-          var barH = barEl ? barEl.offsetHeight : 52;
-          var scrolled = barH - rect.top;
-
-          // Progress p mapping:
-          // 0 during holdStart
-          // 0 -> 1 during scrollTravel
-          // 1 during holdEnd
-          var stripScrolled = scrolled - holdStartPx;
-          var rawP = 0;
-          if (scrollTravel > 0) {
-            rawP = Math.max(0, Math.min(stripScrolled / scrollTravel, 1));
-          }
-
-          var p = easeProgress(rawP);
-          if (rawP >= 1) {
-            p = 1; // Progress p reaches exactly 1 at the end of travel, stays 1 during end hold
-          }
-
-          // At p = 1 target is exactly maxX (clamped, never above or below)
-          var targetX = p >= 1 ? trackTravel : Math.min(trackTravel, Math.max(0, p * trackTravel));
-          block._smooth.target = targetX;
-
-          var inEndHold = (scrolled >= holdStartPx + scrollTravel);
-          var isUnpinning = (scrolled >= totalPinned - 1);
-
-          // During the end hold, snap current to maxX as soon as the remaining difference is under 2px
-          if (inEndHold) {
-            if (Math.abs(trackTravel - block._smooth.current) < 2.0) {
-              block._smooth.current = trackTravel;
-            }
-          }
-
-          // Force current = maxX the moment the hold ends or the block starts unpinning
-          if (isUnpinning) {
-            block._smooth.current = trackTravel;
-            block._smooth.target = trackTravel;
-            if (strip) strip.style.transform = 'translate3d(' + (-trackTravel).toFixed(1) + 'px, 0, 0)';
-          }
-
-          // Update progress bar (instant, not smoothed)
-          if (progressBar) {
-            progressBar.style.transform = 'scaleX(' + p.toFixed(3) + ')';
-          }
-
-          // Update counter and center tile (use target for responsiveness)
-          var offsets = block._tileOffsets;
-          var closestIdx = 0;
-          if (rawP >= 1) {
-            closestIdx = tiles.length - 1;
-          } else if (offsets && offsets.length === tiles.length) {
-            var minDiff = Infinity;
-            for (var i = 0; i < offsets.length; i++) {
-              var tileCenterOnScreen = offsets[i] - targetX;
-              var diff = Math.abs(tileCenterOnScreen - screenCenterX);
-              if (diff < minDiff) {
-                minDiff = diff;
-                closestIdx = i;
-              }
-            }
-          }
-
+          // Focus effect: current photo opacity 1 and scale 1, others opacity .85 and scale .97
+          var tiles = block.querySelectorAll('.tile');
           for (var j = 0; j < tiles.length; j++) {
-            if (j === closestIdx) {
+            if (j === currentIdx) {
               tiles[j].classList.add('is-center');
             } else {
               tiles[j].classList.remove('is-center');
             }
           }
 
-          if (counter && tiles.length) {
-            counter.textContent = (closestIdx + 1) + ' / ' + tiles.length;
+          // Counter follow current index ("3 / 12")
+          var counter = block.querySelector('.cat-counter');
+          if (counter) {
+            counter.textContent = (currentIdx + 1) + ' / ' + N;
+          }
+
+          // Progress line follows current index
+          var progressBar = block.querySelector('.cat-progress-bar');
+          if (progressBar) {
+            var progressRatio = N > 1 ? (currentIdx + 1) / N : 1;
+            progressBar.style.transform = 'scaleX(' + progressRatio.toFixed(3) + ')';
+          }
+
+          // Quiet hint on last photo
+          var hintEl = block.querySelector('.cat-hint');
+          if (hintEl) {
+            if (currentIdx === N - 1 && t >= N - 1.2 && t <= N + 0.5) {
+              hintEl.classList.add('is-visible');
+            } else {
+              hintEl.classList.remove('is-visible');
+            }
           }
         });
 
-        // Start the smoothing loop if not running
         startSmoothLoop();
       }
 
@@ -4041,13 +4098,9 @@
 
         // Time-based easing factor: 1 - exp(-dt / SMOOTH_MS)
         var factor = 1 - Math.exp(-dt / SMOOTH_MS);
-
-        var vw = window.innerWidth;
-        var maxStep = MAX_VELOCITY_RATIO * vw; // 3.5% of viewport width max per frame
-        var minStep = MIN_CATCHUP_RATIO * vw;  // 1.5% of viewport width min catchup per frame
         var needsMore = false;
 
-        var blocksToUpdate = mobilePortfolio.querySelectorAll('.cat-block');
+        var blocksToUpdate = activeBlocks.size > 0 ? activeBlocks : mobilePortfolio.querySelectorAll('.cat-block');
         blocksToUpdate.forEach(function (block) {
           if (block.classList.contains('is-static-row')) return;
           var s = block._smooth;
@@ -4055,61 +4108,19 @@
           var strip = block.querySelector('.cat-strip');
           if (!strip) return;
 
-          var trackTravel = parseFloat(block.dataset.maxScroll) || 0;
-          var holdStartPx = parseFloat(block.dataset.holdStart) || 0;
-          var scrollTravel = parseFloat(block.dataset.scrollTravel) || 0;
-          var totalPinned = parseFloat(block.dataset.totalPinned) || 0;
-          var rect = block.getBoundingClientRect();
-          var barEl = document.getElementById('bar');
-          var barH = barEl ? barEl.offsetHeight : 52;
-          var scrolled = barH - rect.top;
-
-          var inEndHold = (scrolled >= holdStartPx + scrollTravel);
-          var isUnpinning = (scrolled >= totalPinned - 1);
-
-          // Force current = maxX the moment the hold ends or block starts unpinning
-          if (isUnpinning && trackTravel > 0) {
-            s.current = trackTravel;
-            s.target = trackTravel;
-            strip.style.transform = 'translate3d(' + (-trackTravel).toFixed(1) + 'px, 0, 0)';
-            return;
-          }
-
           var diff = s.target - s.current;
           var absDiff = Math.abs(diff);
 
-          if (absDiff < LERP_THRESHOLD) {
+          if (absDiff < 1.0) {
+            // At rest, force the exact x_i (snap the last 1px)
             s.current = s.target;
           } else {
-            var step = diff * factor;
-
-            // Make sure speed cap and smoothing can never stop strip short:
-            // if current is more than 1px behind target, allow catchup at no less than 1.5% vw per frame
-            if (absDiff > 1.0) {
-              if (diff > 0) {
-                if (step < minStep) step = minStep;
-                if (step > diff) step = diff;
-              } else {
-                if (step > -minStep) step = -minStep;
-                if (step < diff) step = diff;
-              }
+            s.current += diff * factor;
+            if (Math.abs(s.target - s.current) < 1.0) {
+              s.current = s.target;
+            } else {
+              needsMore = true;
             }
-
-            // Cap the strip velocity so a hard flick cannot make it fly (max 3.5% vw per frame),
-            // but in end hold, allow it to reach maxX without speed cap holding it back
-            if (!inEndHold) {
-              if (step > maxStep) step = maxStep;
-              else if (step < -maxStep) step = -maxStep;
-            }
-
-            s.current += step;
-
-            // During end hold, snap current to maxX as soon as remaining difference is under 2px
-            if (inEndHold && Math.abs(trackTravel - s.current) < 2.0) {
-              s.current = trackTravel;
-            }
-
-            needsMore = true;
           }
 
           strip.style.transform = 'translate3d(' + (-s.current).toFixed(1) + 'px, 0, 0)';
@@ -4136,6 +4147,34 @@
       }
 
       window.addEventListener('scroll', onScrollPinning, { passive: true });
+
+      // IntersectionObserver for snap-on class on html
+      function setupSnapObserver() {
+        if (typeof IntersectionObserver === 'undefined') return;
+        if (snapObserver) snapObserver.disconnect();
+        intersectingSnapBlocks.clear();
+
+        snapObserver = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.target.classList.contains('is-static-row')) {
+              intersectingSnapBlocks.delete(entry.target);
+              return;
+            }
+            if (entry.isIntersecting) {
+              intersectingSnapBlocks.add(entry.target);
+            } else {
+              intersectingSnapBlocks.delete(entry.target);
+            }
+          });
+          updateSnapState();
+        }, { rootMargin: '10px 0px 10px 0px' });
+
+        mobilePortfolio.querySelectorAll('.cat-block').forEach(function (block) {
+          if (!block.classList.contains('is-static-row')) {
+            snapObserver.observe(block);
+          }
+        });
+      }
 
       // IntersectionObserver to track which blocks are near the viewport and trigger entrance
       var blockObserver = null;
@@ -4226,6 +4265,7 @@
             updateMobileMode();
             computePhotoSizes();
             setupBlockObserver();
+            setupSnapObserver();
             setupStripResizeObserver();
             updateBarTone();
           }
@@ -4244,6 +4284,7 @@
         window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', function () {
           updateMobileMode();
           computePhotoSizes();
+          updateSnapState();
         });
       } catch (e) { }
 
@@ -4253,6 +4294,7 @@
         updateMobileMode();
         computePhotoSizes();
         setupBlockObserver();
+        setupSnapObserver();
         setupStripResizeObserver();
         setupImageListeners();
       });
@@ -4261,8 +4303,10 @@
       updateMobileMode();
       computePhotoSizes();
       setupBlockObserver();
+      setupSnapObserver();
       setupStripResizeObserver();
       setupImageListeners();
+
 
       window.updateMobileMode = updateMobileMode;
       window.computePhotoSizes = computePhotoSizes;
@@ -4757,6 +4801,8 @@
       }
 
       function openLb() {
+        isLightboxOpen = true;
+        updateSnapState();
         var scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
         if (scrollbarWidth > 0) {
           document.body.style.paddingRight = scrollbarWidth + 'px';
@@ -4776,6 +4822,8 @@
           document.body.style.overflow = '';
           document.body.style.paddingRight = '';
           if (bar) bar.style.paddingRight = '';
+          isLightboxOpen = false;
+          updateSnapState();
         }, 250);
       }
 
