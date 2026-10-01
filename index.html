@@ -197,7 +197,8 @@
       scroll-behavior: smooth;
       -webkit-text-size-adjust: 100%;
       scrollbar-width: none;
-      -ms-overflow-style: none
+      -ms-overflow-style: none;
+      overflow-anchor: none
     }
 
     body {
@@ -207,7 +208,8 @@
       font: 400 16px/1.65 var(--body);
       -webkit-font-smoothing: antialiased;
       scrollbar-width: none;
-      -ms-overflow-style: none
+      -ms-overflow-style: none;
+      overflow-anchor: none
     }
 
     img {
@@ -2048,13 +2050,15 @@
       .mobile-portfolio {
         display: block;
         width: 100%;
+        overflow-anchor: none;
       }
 
       .cat-block {
         position: relative;
         width: 100%;
         box-sizing: border-box;
-        margin-bottom: 40px;
+        margin-bottom: 24px;
+        overflow-anchor: none;
       }
 
       .cat-block:last-child {
@@ -3523,109 +3527,6 @@
         }
       }
 
-      function computePhotoSizes() {
-        if (window.innerWidth > 768) return;
-        var vw = window.innerWidth;
-        var svh = Math.min(window.innerHeight, document.documentElement.clientHeight || window.innerHeight);
-
-        // Measure top bar
-        var barEl = document.getElementById('bar');
-        var barH = barEl ? barEl.offsetHeight : 52;
-        document.documentElement.style.setProperty('--bar-h', barH + 'px');
-
-        // Target area: (82vw * 46svh) * 0.9
-        var A = (0.82 * vw * 0.46 * svh) * 0.9;
-        var maxW = 0.82 * vw;
-        var maxH = 0.52 * svh;
-        var minH = 0.28 * svh;
-
-        var blocks = mobilePortfolio.querySelectorAll('.cat-block');
-        blocks.forEach(function (block) {
-          var strip = block.querySelector('.cat-strip');
-          if (!strip) return;
-          var tiles = Array.from(strip.querySelectorAll('.tile'));
-
-          var photoMeta = tiles.map(function (tile) {
-            var img = tile.querySelector('img');
-            var ar = 1.0;
-            if (img && img.naturalWidth && img.naturalHeight) {
-              ar = img.naturalWidth / img.naturalHeight;
-            } else {
-              var style = tile.getAttribute('style') || '';
-              var match = style.match(/--r\s*:\s*([0-9.]+)(?:\s*\/\s*([0-9.]+))?/);
-              if (match) {
-                ar = match[2] ? parseFloat(match[1]) / parseFloat(match[2]) : parseFloat(match[1]);
-              }
-            }
-            if (!ar || isNaN(ar) || ar <= 0) ar = 1.0;
-
-            var w = Math.sqrt(A * ar);
-            var h = w / ar;
-
-            if (w > maxW) { w = maxW; h = w / ar; }
-            if (h > maxH) { h = maxH; w = h * ar; }
-            if (h < minH) { h = minH; w = h * ar; }
-            if (w > maxW) { w = maxW; h = w / ar; }
-
-            // Never upscale beyond natural pixel size
-            if (img && img.naturalWidth > 0 && img.naturalHeight > 0) {
-              if (w > img.naturalWidth || h > img.naturalHeight) {
-                var scale = Math.min(img.naturalWidth / w, img.naturalHeight / h);
-                if (scale < 1) {
-                  w = w * scale;
-                  h = h * scale;
-                }
-              }
-            }
-
-            return {
-              tile: tile,
-              img: img,
-              ar: ar,
-              w: Math.round(w),
-              h: Math.round(h)
-            };
-          });
-
-          // Apply sizes -- item width = photo width exactly
-          photoMeta.forEach(function (item) {
-            var media = item.tile.querySelector('.tile-media');
-            if (media) {
-              media.style.width = item.w + 'px';
-              media.style.height = item.h + 'px';
-            }
-            // Set explicit width/height on image so nothing collapses to zero
-            if (item.img) {
-              item.img.style.width = item.w + 'px';
-              item.img.style.height = item.h + 'px';
-              item.img.setAttribute('loading', 'eager');
-              item.img.setAttribute('decoding', 'async');
-            }
-          });
-
-          // Compute track width: sum of item widths + gaps + side paddings
-          var curTransform = strip.style.transform;
-          strip.style.transform = 'none';
-          var stripWidth = strip.scrollWidth;
-          strip.style.transform = curTransform;
-
-          var maxScroll = Math.max(0, stripWidth - vw + 40);
-          // Clamp: at most trackWidth - vw + 40
-          var trackMinusVw = stripWidth - vw;
-          if (trackMinusVw < 0) trackMinusVw = 0;
-          maxScroll = Math.min(maxScroll, trackMinusVw + 40);
-
-          block.style.height = (maxScroll + svh) + 'px';
-          block.dataset.maxScroll = maxScroll;
-
-          var stripLeft = strip.getBoundingClientRect().left;
-          block._tileOffsets = tiles.map(function (t) {
-            var r = t.getBoundingClientRect();
-            return (r.left - stripLeft) + r.width / 2;
-          });
-        });
-      }
-
       function updateMobileMode() {
         var isPhone = window.innerWidth <= 768;
 
@@ -3687,42 +3588,200 @@
         }
 
         mobilePortfolio.classList.add('has-pinning');
-        computePhotoSizes();
-        updateScrollPinning();
       }
 
-      var scrollTicking = false;
-      function onScrollPinning() {
-        if (!scrollTicking) {
-          requestAnimationFrame(function () {
-            updateScrollPinning();
-            updateBarTone();
-            scrollTicking = false;
+      /* ---- Scroll engine constants (tweak here) ---- */
+      var SCROLL_SPEED = 1.7;       // px of page scroll per 1 px of strip movement
+      var HOLD_START = 0.12;        // fraction of svh to hold before first photo moves
+      var HOLD_END = 0.25;          // fraction of svh to hold after last photo arrives
+      var LERP_FACTOR = 0.12;       // smoothing factor per frame (0..1, lower = smoother)
+      var EASE_TAIL = 0.08;         // last 8% of progress gets ease-in-out deceleration
+      var LERP_THRESHOLD = 0.1;     // px difference to stop the rAF loop
+
+      // Per-block runtime state
+      // block._smooth = { current, target, running }
+      var smoothRafId = null;
+      var activeBlocks = new Set();  // blocks currently near viewport (via IntersectionObserver)
+      var lastResizeWidth = 0;
+      var lastResizeHeight = 0;
+
+      function computePhotoSizes() {
+        if (window.innerWidth > 768) return;
+        var vw = window.innerWidth;
+        var svh = Math.min(window.innerHeight, document.documentElement.clientHeight || window.innerHeight);
+
+        // Measure top bar
+        var barEl = document.getElementById('bar');
+        var barH = barEl ? barEl.offsetHeight : 52;
+        document.documentElement.style.setProperty('--bar-h', barH + 'px');
+
+        var isReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        // Target area: (82vw * 46svh) * 0.9
+        var A = (0.82 * vw * 0.46 * svh) * 0.9;
+        var maxW = 0.82 * vw;
+        var maxH = 0.52 * svh;
+        var minH = 0.28 * svh;
+
+        var blocks = mobilePortfolio.querySelectorAll('.cat-block');
+        blocks.forEach(function (block) {
+          var strip = block.querySelector('.cat-strip');
+          if (!strip) return;
+          var tiles = Array.from(strip.querySelectorAll('.tile'));
+
+          // Save current progress ratio to restore after resize
+          var oldMaxScroll = parseFloat(block.dataset.maxScroll) || 0;
+          var oldSmooth = block._smooth;
+          var oldRatio = 0;
+          if (oldSmooth && oldMaxScroll > 0) {
+            oldRatio = oldSmooth.current / oldMaxScroll;
+          }
+
+          var photoMeta = tiles.map(function (tile) {
+            var img = tile.querySelector('img');
+            var ar = 1.0;
+            if (img && img.naturalWidth && img.naturalHeight) {
+              ar = img.naturalWidth / img.naturalHeight;
+            } else {
+              var style = tile.getAttribute('style') || '';
+              var match = style.match(/--r\s*:\s*([0-9.]+)(?:\s*\/\s*([0-9.]+))?/);
+              if (match) {
+                ar = match[2] ? parseFloat(match[1]) / parseFloat(match[2]) : parseFloat(match[1]);
+              }
+            }
+            if (!ar || isNaN(ar) || ar <= 0) ar = 1.0;
+
+            var w = Math.sqrt(A * ar);
+            var h = w / ar;
+
+            if (w > maxW) { w = maxW; h = w / ar; }
+            if (h > maxH) { h = maxH; w = h * ar; }
+            if (h < minH) { h = minH; w = h * ar; }
+            if (w > maxW) { w = maxW; h = w / ar; }
+
+            // Never upscale beyond natural pixel size
+            if (img && img.naturalWidth > 0 && img.naturalHeight > 0) {
+              if (w > img.naturalWidth || h > img.naturalHeight) {
+                var scale = Math.min(img.naturalWidth / w, img.naturalHeight / h);
+                if (scale < 1) {
+                  w = w * scale;
+                  h = h * scale;
+                }
+              }
+            }
+
+            return {
+              tile: tile,
+              img: img,
+              ar: ar,
+              w: Math.round(w),
+              h: Math.round(h)
+            };
           });
-          scrollTicking = true;
+
+          // Apply sizes -- item width = photo width exactly
+          photoMeta.forEach(function (item) {
+            var media = item.tile.querySelector('.tile-media');
+            if (media) {
+              media.style.width = item.w + 'px';
+              media.style.height = item.h + 'px';
+            }
+            if (item.img) {
+              item.img.style.width = item.w + 'px';
+              item.img.style.height = item.h + 'px';
+              item.img.setAttribute('loading', 'eager');
+              item.img.setAttribute('decoding', 'async');
+            }
+          });
+
+          if (isReduced) {
+            block.style.height = '';
+            if (strip) strip.style.transform = '';
+            return;
+          }
+
+          // Compute track width
+          var curTransform = strip.style.transform;
+          strip.style.transform = 'none';
+          var stripWidth = strip.scrollWidth;
+          strip.style.transform = curTransform || 'translate3d(0,0,0)';
+
+          var trackTravel = Math.max(0, stripWidth - vw);
+
+          // Hold zones in px
+          var holdStartPx = Math.round(svh * HOLD_START);
+          var holdEndPx = Math.round(svh * HOLD_END);
+
+          // Total pinned scroll = holdStart + (trackTravel * speed) + holdEnd
+          var scrollTravel = Math.round(trackTravel * SCROLL_SPEED);
+          var totalPinned = holdStartPx + scrollTravel + holdEndPx;
+
+          // Block height = totalPinned + one viewport (the sticky frame)
+          block.style.height = (totalPinned + svh) + 'px';
+          block.dataset.maxScroll = trackTravel;
+          block.dataset.holdStart = holdStartPx;
+          block.dataset.holdEnd = holdEndPx;
+          block.dataset.scrollTravel = scrollTravel;
+          block.dataset.totalPinned = totalPinned;
+
+          // Tile center offsets for closest-tile detection
+          var stripLeft = strip.getBoundingClientRect().left;
+          block._tileOffsets = tiles.map(function (t) {
+            var r = t.getBoundingClientRect();
+            return (r.left - stripLeft) + r.width / 2;
+          });
+
+          // Initialize or restore smooth state
+          if (!block._smooth) {
+            block._smooth = { current: 0, target: 0, running: false };
+          }
+          // Restore progress ratio after recompute
+          if (oldMaxScroll > 0 && trackTravel > 0) {
+            var restored = oldRatio * trackTravel;
+            block._smooth.current = restored;
+            block._smooth.target = restored;
+          }
+        });
+
+        if (!isReduced) {
+          computeTargets();
         }
       }
 
-      function updateScrollPinning() {
+      function easeInOutTail(p) {
+        // Apply ease-in-out only in the last EASE_TAIL of progress
+        if (p < 1 - EASE_TAIL) return p;
+        var t = (p - (1 - EASE_TAIL)) / EASE_TAIL; // 0..1 within tail
+        var eased = t * t * (3 - 2 * t); // smoothstep
+        return (1 - EASE_TAIL) + eased * EASE_TAIL;
+      }
+
+      function computeTargets() {
         if (!isMobileActive || window.innerWidth > 768) return;
         if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
         var vw = window.innerWidth;
-        var vh = window.innerHeight;
         var screenCenterX = vw / 2;
-        var blocks = mobilePortfolio.querySelectorAll('.cat-block');
 
-        blocks.forEach(function (block) {
+        var blocksToUpdate = activeBlocks.size > 0 ? activeBlocks : mobilePortfolio.querySelectorAll('.cat-block');
+        blocksToUpdate.forEach(function (block) {
           var rect = block.getBoundingClientRect();
-          if (rect.bottom < -60 || rect.top > vh + 60) return;
-
-          var maxScroll = parseFloat(block.dataset.maxScroll) || 0;
+          var trackTravel = parseFloat(block.dataset.maxScroll) || 0;
+          var holdStartPx = parseFloat(block.dataset.holdStart) || 0;
+          var scrollTravel = parseFloat(block.dataset.scrollTravel) || 0;
+          var totalPinned = parseFloat(block.dataset.totalPinned) || 0;
           var strip = block.querySelector('.cat-strip');
           var progressBar = block.querySelector('.cat-progress-bar');
           var counter = block.querySelector('.cat-counter');
           var tiles = block.querySelectorAll('.tile');
 
-          if (maxScroll <= 0) {
+          if (!block._smooth) {
+            block._smooth = { current: 0, target: 0, running: false };
+          }
+
+          if (trackTravel <= 0) {
+            block._smooth.target = 0;
+            block._smooth.current = 0;
             if (strip) strip.style.transform = 'translate3d(0, 0, 0)';
             if (progressBar) progressBar.style.transform = 'scaleX(1)';
             if (counter && tiles.length) counter.textContent = '1 / ' + tiles.length;
@@ -3735,38 +3794,38 @@
             return;
           }
 
+          // scrolled = how far the block top has scrolled past the sticky top
           var scrolled = -rect.top;
-          var progress = Math.min(Math.max(scrolled / maxScroll, 0), 1);
-          var x = -progress * maxScroll;
 
-          if (strip) {
-            strip.style.transform = 'translate3d(' + x.toFixed(1) + 'px, 0, 0)';
+          // Map scrolled through hold zones
+          var stripScrolled = scrolled - holdStartPx;
+          var p = 0;
+          if (scrollTravel > 0) {
+            p = Math.max(0, Math.min(stripScrolled / scrollTravel, 1));
           }
 
+          // Apply ease-in-out deceleration at the tail
+          p = easeInOutTail(p);
+
+          var targetX = p * trackTravel;
+          block._smooth.target = targetX;
+
+          // Update progress bar (instant, not smoothed)
           if (progressBar) {
-            progressBar.style.transform = 'scaleX(' + progress.toFixed(3) + ')';
+            progressBar.style.transform = 'scaleX(' + p.toFixed(3) + ')';
           }
 
+          // Update counter and center tile (use target for responsiveness)
           var offsets = block._tileOffsets;
           var closestIdx = 0;
           if (offsets && offsets.length === tiles.length) {
             var minDiff = Infinity;
             for (var i = 0; i < offsets.length; i++) {
-              var tileCenterOnScreen = offsets[i] + x;
+              var tileCenterOnScreen = offsets[i] - targetX;
               var diff = Math.abs(tileCenterOnScreen - screenCenterX);
               if (diff < minDiff) {
                 minDiff = diff;
                 closestIdx = i;
-              }
-            }
-          } else {
-            var minDiffFallback = Infinity;
-            for (var k = 0; k < tiles.length; k++) {
-              var tRect = tiles[k].getBoundingClientRect();
-              var diffFallback = Math.abs((tRect.left + tRect.width / 2) - screenCenterX);
-              if (diffFallback < minDiffFallback) {
-                minDiffFallback = diffFallback;
-                closestIdx = k;
               }
             }
           }
@@ -3783,31 +3842,127 @@
             counter.textContent = (closestIdx + 1) + ' / ' + tiles.length;
           }
         });
+
+        // Start the smoothing loop if not running
+        startSmoothLoop();
+      }
+
+      function startSmoothLoop() {
+        if (smoothRafId) return;
+        smoothRafId = requestAnimationFrame(smoothStep);
+      }
+
+      function smoothStep() {
+        smoothRafId = null;
+        var needsMore = false;
+
+        var blocksToUpdate = activeBlocks.size > 0 ? activeBlocks : mobilePortfolio.querySelectorAll('.cat-block');
+        blocksToUpdate.forEach(function (block) {
+          var s = block._smooth;
+          if (!s) return;
+          var strip = block.querySelector('.cat-strip');
+          if (!strip) return;
+
+          var diff = s.target - s.current;
+          if (Math.abs(diff) < LERP_THRESHOLD) {
+            s.current = s.target;
+          } else {
+            s.current += diff * LERP_FACTOR;
+            needsMore = true;
+          }
+
+          strip.style.transform = 'translate3d(' + (-s.current).toFixed(1) + 'px, 0, 0)';
+        });
+
+        if (needsMore) {
+          smoothRafId = requestAnimationFrame(smoothStep);
+        }
+      }
+
+      // Single passive scroll listener
+      var scrollTicking = false;
+      function onScrollPinning() {
+        if (!scrollTicking) {
+          requestAnimationFrame(function () {
+            computeTargets();
+            updateBarTone();
+            scrollTicking = false;
+          });
+          scrollTicking = true;
+        }
       }
 
       window.addEventListener('scroll', onScrollPinning, { passive: true });
 
+      // IntersectionObserver to track which blocks are near the viewport
+      var blockObserver = null;
+      function setupBlockObserver() {
+        if (blockObserver) blockObserver.disconnect();
+        activeBlocks.clear();
+        blockObserver = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+              activeBlocks.add(entry.target);
+            } else {
+              activeBlocks.delete(entry.target);
+            }
+          });
+        }, { rootMargin: '200px 0px 200px 0px' });
+
+        mobilePortfolio.querySelectorAll('.cat-block').forEach(function (block) {
+          blockObserver.observe(block);
+        });
+      }
+
+      // Smart resize: only recompute when width changes or height changes by >120px
       var mobileResizeTimer = null;
       function onMobileResize() {
         clearTimeout(mobileResizeTimer);
         mobileResizeTimer = setTimeout(function () {
-          updateMobileMode();
-          computePhotoSizes();
-          updateBarTone();
+          var newW = window.innerWidth;
+          var newH = window.innerHeight;
+          var widthChanged = newW !== lastResizeWidth;
+          var heightChanged = Math.abs(newH - lastResizeHeight) > 120;
+
+          if (widthChanged || heightChanged) {
+            lastResizeWidth = newW;
+            lastResizeHeight = newH;
+            updateMobileMode();
+            computePhotoSizes();
+            setupBlockObserver();
+            updateBarTone();
+          }
         }, 80);
       }
 
       window.addEventListener('resize', onMobileResize);
-      window.addEventListener('orientationchange', onMobileResize);
+      window.addEventListener('orientationchange', function () {
+        // Force recompute on orientation change
+        lastResizeWidth = 0;
+        lastResizeHeight = 0;
+        onMobileResize();
+      });
+
+      try {
+        window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', function () {
+          updateMobileMode();
+          computePhotoSizes();
+        });
+      } catch (e) {}
+
       window.addEventListener('load', function () {
+        lastResizeWidth = window.innerWidth;
+        lastResizeHeight = window.innerHeight;
         updateMobileMode();
         computePhotoSizes();
+        setupBlockObserver();
         document.querySelectorAll('.tile img').forEach(function (img) {
           if (img.complete && img.naturalWidth > 0) {
             img.classList.add('is-loaded');
           } else {
             img.addEventListener('load', function () {
               img.classList.add('is-loaded');
+              // Recompute sizes preserving progress ratio
               computePhotoSizes();
             });
           }
@@ -3816,6 +3971,7 @@
 
       setupMobileCategories();
       updateMobileMode();
+      computePhotoSizes();
 
       var bar = document.getElementById('bar');
       var links = document.querySelectorAll('nav a[href^="#"]');
