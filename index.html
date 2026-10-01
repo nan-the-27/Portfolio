@@ -2033,10 +2033,17 @@
       .work {
         padding: 0;
         border-top: 1px solid var(--line);
+        scroll-behavior: auto;
       }
 
       .work-head {
-        display: none !important;
+        display: block !important;
+        padding: clamp(40px, 8svh, 64px) var(--pad) 0;
+        margin-bottom: 0;
+      }
+
+      .work-head .section-head {
+        margin-bottom: 0;
       }
 
       .filters {
@@ -2051,13 +2058,24 @@
         display: block;
         width: 100%;
         overflow-anchor: none;
+        scroll-behavior: auto;
+      }
+
+      /* Breathing room between categories (static empty spacer) */
+      .cat-spacer {
+        width: 100%;
+        height: clamp(72px, 14svh, 130px);
+        background: var(--bg);
+        box-sizing: border-box;
+        flex: 0 0 auto;
+        pointer-events: none;
       }
 
       .cat-block {
         position: relative;
         width: 100%;
         box-sizing: border-box;
-        margin-bottom: 24px;
+        margin-bottom: 0;
         overflow-anchor: none;
       }
 
@@ -2078,6 +2096,21 @@
         background: var(--bg);
       }
 
+      /* Soft category entrance animation (once when block comes into view) */
+      .has-pinning .cat-header,
+      .has-pinning .cat-strip-track {
+        opacity: 0;
+        transform: translateY(16px);
+        transition: opacity 0.7s cubic-bezier(.22, 1, .36, 1), transform 0.7s cubic-bezier(.22, 1, .36, 1);
+        will-change: opacity, transform;
+      }
+
+      .has-pinning .cat-block.is-entered .cat-header,
+      .has-pinning .cat-block.is-entered .cat-strip-track {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
       /* Native scroll fallback */
       .cat-sticky {
         display: flex;
@@ -2092,7 +2125,7 @@
         display: flex;
         justify-content: space-between;
         align-items: flex-end;
-        padding: 16px var(--pad) 0;
+        padding: 18px var(--pad) 0;
         width: 100%;
         box-sizing: border-box;
         flex: 0 0 auto;
@@ -2198,7 +2231,8 @@
         opacity: 0.85;
         transform: scale(0.97);
         transform-origin: center center;
-        transition: opacity var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
+        transition: opacity 0.5s cubic-bezier(.22, 1, .36, 1), transform 0.5s cubic-bezier(.22, 1, .36, 1);
+        will-change: opacity, transform;
       }
 
       .cat-strip .tile.is-center {
@@ -2376,6 +2410,13 @@
 
       .mobile-portfolio:not(.has-pinning) .cat-footer {
         display: none !important;
+      }
+
+      .mobile-portfolio:not(.has-pinning) .cat-header,
+      .mobile-portfolio:not(.has-pinning) .cat-strip-track {
+        opacity: 1 !important;
+        transform: none !important;
+        transition: none !important;
       }
 
       /* Bottom Navigation Bar - removed */
@@ -2648,6 +2689,13 @@
 
       .cat-footer {
         display: none !important;
+      }
+
+      .cat-header,
+      .cat-strip-track {
+        opacity: 1 !important;
+        transform: none !important;
+        transition: none !important;
       }
     }
 
@@ -3451,6 +3499,12 @@
         });
 
         if (mobilePortfolio.children.length === 0) {
+          // Spacer before the first category (below "Portfolio" title)
+          var topSpacer = document.createElement('div');
+          topSpacer.className = 'cat-spacer';
+          topSpacer.setAttribute('aria-hidden', 'true');
+          mobilePortfolio.appendChild(topSpacer);
+
           sortedCats.forEach(function (catKey, catIdx) {
             var catTiles = originalTiles.filter(function (t) {
               return (t.getAttribute('data-c') || '').toLowerCase() === catKey;
@@ -3523,6 +3577,12 @@
 
             block.appendChild(sticky);
             mobilePortfolio.appendChild(block);
+
+            // Spacer after each category (including the last)
+            var spacer = document.createElement('div');
+            spacer.className = 'cat-spacer';
+            spacer.setAttribute('aria-hidden', 'true');
+            mobilePortfolio.appendChild(spacer);
           });
         }
       }
@@ -3581,6 +3641,7 @@
           var blocks = mobilePortfolio.querySelectorAll('.cat-block');
           blocks.forEach(function (block) {
             block.style.height = '';
+            block.classList.add('is-entered');
             var strip = block.querySelector('.cat-strip');
             if (strip) strip.style.transform = '';
           });
@@ -3591,16 +3652,18 @@
       }
 
       /* ---- Scroll engine constants (tweak here) ---- */
-      var SCROLL_SPEED = 1.7;       // px of page scroll per 1 px of strip movement
-      var HOLD_START = 0.12;        // fraction of svh to hold before first photo moves
-      var HOLD_END = 0.25;          // fraction of svh to hold after last photo arrives
-      var LERP_FACTOR = 0.12;       // smoothing factor per frame (0..1, lower = smoother)
-      var EASE_TAIL = 0.08;         // last 8% of progress gets ease-in-out deceleration
-      var LERP_THRESHOLD = 0.1;     // px difference to stop the rAF loop
+      var SCROLL_SPEED = 2.1;          // px of page scroll per 1 px of strip movement (--speed)
+      var SMOOTH_MS = 140;             // time constant in ms for frame-rate independent easing
+      var HOLD_START = 0.12;           // fraction of svh to hold before first photo moves (12%)
+      var HOLD_END = 0.25;             // fraction of svh to hold after last photo arrives (25%)
+      var EASE_ZONE = 0.10;            // first 10% and last 10% of progress get ease-in-out curve
+      var MAX_VELOCITY_RATIO = 0.035;  // max strip movement per frame as fraction of viewport width (3.5%)
+      var LERP_THRESHOLD = 0.1;        // px difference to stop the rAF loop
 
       // Per-block runtime state
       // block._smooth = { current, target, running }
       var smoothRafId = null;
+      var lastFrameTime = 0;
       var activeBlocks = new Set();  // blocks currently near viewport (via IntersectionObserver)
       var lastResizeWidth = 0;
       var lastResizeHeight = 0;
@@ -3696,6 +3759,7 @@
 
           if (isReduced) {
             block.style.height = '';
+            block.classList.add('is-entered');
             if (strip) strip.style.transform = '';
             return;
           }
@@ -3748,12 +3812,23 @@
         }
       }
 
-      function easeInOutTail(p) {
-        // Apply ease-in-out only in the last EASE_TAIL of progress
-        if (p < 1 - EASE_TAIL) return p;
-        var t = (p - (1 - EASE_TAIL)) / EASE_TAIL; // 0..1 within tail
-        var eased = t * t * (3 - 2 * t); // smoothstep
-        return (1 - EASE_TAIL) + eased * EASE_TAIL;
+      function easeProgress(p) {
+        if (p <= 0) return 0;
+        if (p >= 1) return 1;
+        var Z = EASE_ZONE; // 0.10
+        // k is the slope in the linear section such that f(1) = 1 with C1 continuity
+        var k = 1 / (1 - Z); // 1 / 0.9 = 1.1111...
+        if (p < Z) {
+          // Quadratic ease-in: slope starts at 0, smoothly accelerates to k
+          return 0.5 * k * (p * p / Z);
+        } else if (p > 1 - Z) {
+          // Quadratic ease-out: slope decelerates smoothly from k to 0
+          var u = (p - (1 - Z)) / Z;
+          return (1 - 0.5 * k * Z) + k * Z * (u - 0.5 * u * u);
+        } else {
+          // Linear in the middle
+          return 0.5 * k * Z + k * (p - Z);
+        }
       }
 
       function computeTargets() {
@@ -3804,8 +3879,8 @@
             p = Math.max(0, Math.min(stripScrolled / scrollTravel, 1));
           }
 
-          // Apply ease-in-out deceleration at the tail
-          p = easeInOutTail(p);
+          // Apply ease-in at start (first 10%) and ease-out at end (last 10%)
+          p = easeProgress(p);
 
           var targetX = p * trackTravel;
           block._smooth.target = targetX;
@@ -3849,11 +3924,21 @@
 
       function startSmoothLoop() {
         if (smoothRafId) return;
+        lastFrameTime = 0;
         smoothRafId = requestAnimationFrame(smoothStep);
       }
 
-      function smoothStep() {
+      function smoothStep(timestamp) {
         smoothRafId = null;
+        var now = timestamp || (window.performance && performance.now ? performance.now() : Date.now());
+        var dt = lastFrameTime ? Math.min(Math.max(now - lastFrameTime, 1), 50) : 16.7;
+        lastFrameTime = now;
+
+        // Time-based easing factor: 1 - exp(-dt / SMOOTH_MS)
+        var factor = 1 - Math.exp(-dt / SMOOTH_MS);
+
+        var vw = window.innerWidth;
+        var maxStep = MAX_VELOCITY_RATIO * vw; // 3.5% of viewport width max per frame
         var needsMore = false;
 
         var blocksToUpdate = activeBlocks.size > 0 ? activeBlocks : mobilePortfolio.querySelectorAll('.cat-block');
@@ -3867,7 +3952,12 @@
           if (Math.abs(diff) < LERP_THRESHOLD) {
             s.current = s.target;
           } else {
-            s.current += diff * LERP_FACTOR;
+            var step = diff * factor;
+            // Cap the strip velocity so a hard flick cannot make it fly
+            if (step > maxStep) step = maxStep;
+            else if (step < -maxStep) step = -maxStep;
+
+            s.current += step;
             needsMore = true;
           }
 
@@ -3876,6 +3966,8 @@
 
         if (needsMore) {
           smoothRafId = requestAnimationFrame(smoothStep);
+        } else {
+          lastFrameTime = 0;
         }
       }
 
@@ -3894,7 +3986,7 @@
 
       window.addEventListener('scroll', onScrollPinning, { passive: true });
 
-      // IntersectionObserver to track which blocks are near the viewport
+      // IntersectionObserver to track which blocks are near the viewport and trigger entrance
       var blockObserver = null;
       function setupBlockObserver() {
         if (blockObserver) blockObserver.disconnect();
@@ -3903,6 +3995,7 @@
           entries.forEach(function (entry) {
             if (entry.isIntersecting) {
               activeBlocks.add(entry.target);
+              entry.target.classList.add('is-entered');
             } else {
               activeBlocks.delete(entry.target);
             }
@@ -3911,6 +4004,10 @@
 
         mobilePortfolio.querySelectorAll('.cat-block').forEach(function (block) {
           blockObserver.observe(block);
+          // Safety timeout: fall back to visible after 1.2s if observer is late
+          setTimeout(function () {
+            block.classList.add('is-entered');
+          }, 1200);
         });
       }
 
