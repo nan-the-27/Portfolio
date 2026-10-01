@@ -3800,7 +3800,42 @@
           document.documentElement.classList.remove('snap-on');
           return;
         }
-        if (!isLightboxOpen && intersectingSnapBlocks.size > 0) {
+        if (isLightboxOpen) {
+          document.documentElement.classList.remove('snap-on');
+          return;
+        }
+
+        var nonStaticBlocks = Array.from(mobilePortfolio.querySelectorAll('.cat-block:not(.is-static-row)'));
+        if (nonStaticBlocks.length === 0) {
+          document.documentElement.classList.remove('snap-on');
+          return;
+        }
+
+        var firstBlock = nonStaticBlocks[0];
+        var lastBlock = nonStaticBlocks[nonStaticBlocks.length - 1];
+
+        var barEl = document.getElementById('bar');
+        var barH = barEl ? barEl.offsetHeight : 52;
+        var svh = Math.min(window.innerHeight, document.documentElement.clientHeight || window.innerHeight);
+        var stepHPx = getStepHPx(svh);
+
+        var firstRect = firstBlock.getBoundingClientRect();
+        var firstDocTop = firstRect.top + window.scrollY;
+        var firstSnapStart = firstDocTop - barH - 30;
+
+        var lastRect = lastBlock.getBoundingClientRect();
+        var lastDocTop = lastRect.top + window.scrollY;
+        var lastN = lastBlock._photoCount || 0;
+        var lastExitScroll = lastDocTop - barH + (lastN * stepHPx);
+
+        var scrollY = window.scrollY;
+
+        // Snapping active only from Category 1 start up to the exit point of the last category.
+        // Once at or past the exit point of the last category (lastExitScroll - 5), release snap-on
+        // so that the spacer, Services, Contact, and footer scroll completely freely without getting stuck!
+        var isWithinSnapZone = (scrollY >= firstSnapStart && scrollY < lastExitScroll - 5);
+
+        if (isWithinSnapZone) {
           document.documentElement.classList.add('snap-on');
         } else {
           document.documentElement.classList.remove('snap-on');
@@ -4081,6 +4116,7 @@
           }
         });
 
+        updateSnapState();
         startSmoothLoop();
       }
 
@@ -4140,6 +4176,7 @@
           requestAnimationFrame(function () {
             computeTargets();
             updateBarTone();
+            updateSnapState();
             scrollTicking = false;
           });
           scrollTicking = true;
