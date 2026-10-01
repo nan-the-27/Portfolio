@@ -2053,13 +2053,11 @@
       .cat-block {
         position: relative;
         width: 100%;
-        border-bottom: 1px solid var(--line);
         box-sizing: border-box;
-        margin-bottom: 56px;
+        margin-bottom: 40px;
       }
 
       .cat-block:last-child {
-        border-bottom: none;
         margin-bottom: 0;
       }
 
@@ -2067,40 +2065,34 @@
       .has-pinning .cat-sticky {
         position: -webkit-sticky;
         position: sticky;
-        top: 0;
-        height: 100vh;
-        height: 100svh;
+        top: var(--bar-h, 52px);
+        height: calc(100svh - var(--bar-h, 52px) - env(safe-area-inset-bottom, 0px));
         overflow: hidden;
         display: flex;
         flex-direction: column;
-        justify-content: space-between;
         box-sizing: border-box;
         background: var(--bg);
-        padding-top: calc(env(safe-area-inset-top) + 48px);
       }
 
       /* Native scroll fallback */
       .cat-sticky {
         display: flex;
         flex-direction: column;
-        justify-content: space-between;
-        min-height: 100vh;
-        min-height: 100svh;
+        min-height: calc(100svh - var(--bar-h, 52px) - env(safe-area-inset-bottom, 0px));
         box-sizing: border-box;
         background: var(--bg);
-        padding-top: calc(env(safe-area-inset-top) + 48px);
       }
 
-      /* Category Header: sits 24px above the strip */
+      /* Category Header */
       .cat-header {
         display: flex;
         justify-content: space-between;
         align-items: flex-end;
-        padding: 0 var(--pad);
+        padding: 16px var(--pad) 0;
         width: 100%;
         box-sizing: border-box;
-        margin-bottom: 24px;
         flex: 0 0 auto;
+        min-height: 80px;
       }
 
       .cat-header-left {
@@ -2161,12 +2153,13 @@
         align-items: center;
         box-sizing: border-box;
         min-height: 0;
+        margin-top: 16px;
       }
 
       .cat-strip {
         display: flex;
-        align-items: flex-start;
-        gap: 22px;
+        align-items: center;
+        gap: 14px;
         padding-left: var(--pad);
         padding-right: var(--pad);
         width: max-content;
@@ -2184,6 +2177,7 @@
         display: flex;
         flex-direction: column;
         align-items: flex-start;
+        gap: 10px;
         width: auto;
         height: auto;
         max-height: none;
@@ -2197,11 +2191,10 @@
         box-shadow: none;
         cursor: pointer;
         overflow: visible;
-        opacity: 0.55;
-        transform: scale(0.95);
+        opacity: 0.85;
+        transform: scale(0.97);
         transform-origin: center center;
         transition: opacity var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
-        will-change: transform, opacity;
       }
 
       .cat-strip .tile.is-center {
@@ -2209,16 +2202,9 @@
         transform: scale(1);
       }
 
-      /* Fixed-height slot (50svh), vertically centered */
+      /* Remove fixed-height slot -- item width = photo width */
       .cat-strip .tile-slot {
-        height: 50svh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        position: relative;
-        flex: 0 0 auto;
-        overflow: visible;
-        box-sizing: border-box;
+        display: contents;
       }
 
       .cat-strip .tile-media {
@@ -2227,7 +2213,6 @@
         overflow: hidden;
         box-sizing: border-box;
         flex: 0 0 auto;
-        transition: transform var(--t-fast) var(--ease);
       }
 
       .cat-strip .tile-media picture,
@@ -2238,6 +2223,12 @@
         border-radius: 0;
         display: block;
         pointer-events: auto;
+        opacity: 1;
+      }
+
+      /* Force loaded images visible */
+      .cat-strip .tile img.is-loaded {
+        opacity: 1;
       }
 
       /* Project Tile Badge - removed */
@@ -2245,11 +2236,11 @@
         display: none !important;
       }
 
-      /* Captions sit 14px under each photo at the same baseline across the row */
+      /* Caption directly under photo, left-aligned */
       .cat-strip .tile .tile-caption {
         display: flex !important;
         position: static;
-        margin-top: 14px;
+        margin: 0;
         padding: 0;
         background: none !important;
         color: var(--ink);
@@ -2266,7 +2257,7 @@
 
       .cat-strip .tile .tile-caption .tile-title {
         font-family: var(--head);
-        font-size: 12.5px;
+        font-size: 12px;
         font-weight: 500;
         letter-spacing: .06em;
         text-transform: uppercase;
@@ -2280,55 +2271,22 @@
 
       .cat-strip .tile .tile-caption .tile-place {
         font-family: var(--head);
-        font-size: 10.5px;
+        font-size: 11px;
         font-weight: 400;
         letter-spacing: .12em;
         text-transform: uppercase;
         color: var(--muted);
         white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
         opacity: 0.9;
         line-height: 1.2;
       }
 
       /* End Hint Card */
       .cat-end-hint {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: flex-start;
-        height: 50svh;
-        min-width: 140px;
-        margin: 0;
-        padding: 0 28px;
-        border-left: 1px solid var(--line);
-        color: var(--muted);
-        flex: 0 0 auto;
-        box-sizing: border-box;
-        gap: 4px;
-      }
-
-      .cat-end-hint .hint-sub {
-        font-family: var(--head);
-        font-size: 11px;
-        font-weight: 400;
-        letter-spacing: .16em;
-        text-transform: uppercase;
-        color: var(--muted);
-      }
-
-      .cat-end-hint .hint-title {
-        font-family: var(--head);
-        font-size: 26px;
-        font-weight: 300;
-        line-height: 1.1;
-        letter-spacing: -.01em;
-        color: var(--ink);
-      }
-
-      .cat-end-hint .hint-arrow {
-        display: inline-flex;
-        margin-top: 6px;
-        color: var(--ink);
+        display: none;
       }
 
       /* Progress Bar & Counter Footer */
@@ -2336,10 +2294,12 @@
         display: flex;
         align-items: center;
         gap: 14px;
-        padding: 16px var(--pad) calc(env(safe-area-inset-bottom) + 16px);
+        padding: 0 var(--pad) 20px;
         width: 100%;
         box-sizing: border-box;
         flex: 0 0 auto;
+        margin-top: auto;
+        padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
       }
 
       .cat-progress-track {
@@ -3429,6 +3389,27 @@
             }
           }
         }
+        // Ensure images show on error: keep placeholder visible
+        var img = tile.querySelector('img');
+        if (img) {
+          img.addEventListener('error', function () {
+            img.style.display = 'none';
+            var media = tile.querySelector('.tile-media');
+            if (media) {
+              media.style.background = 'var(--tile)';
+              // Parse --r from tile style for placeholder sizing
+              var style = tile.getAttribute('style') || '';
+              var match = style.match(/--r\s*:\s*([0-9.]+)(?:\s*\/\s*([0-9.]+))?/);
+              if (match) {
+                var ar = match[2] ? parseFloat(match[1]) / parseFloat(match[2]) : parseFloat(match[1]);
+                if (ar && ar > 0 && !media.style.width) {
+                  media.style.width = '200px';
+                  media.style.height = Math.round(200 / ar) + 'px';
+                }
+              }
+            }
+          }, { once: true });
+        }
       }
 
       function setupMobileCategories() {
@@ -3546,11 +3527,17 @@
         if (window.innerWidth > 768) return;
         var vw = window.innerWidth;
         var svh = Math.min(window.innerHeight, document.documentElement.clientHeight || window.innerHeight);
-        var A = (0.82 * vw * 0.50 * svh) * 0.72;
 
-        var maxW = 0.84 * vw;
-        var maxH = 0.54 * svh;
-        var minH = 0.32 * svh;
+        // Measure top bar
+        var barEl = document.getElementById('bar');
+        var barH = barEl ? barEl.offsetHeight : 52;
+        document.documentElement.style.setProperty('--bar-h', barH + 'px');
+
+        // Target area: (82vw * 46svh) * 0.9
+        var A = (0.82 * vw * 0.46 * svh) * 0.9;
+        var maxW = 0.82 * vw;
+        var maxH = 0.52 * svh;
+        var minH = 0.28 * svh;
 
         var blocks = mobilePortfolio.querySelectorAll('.cat-block');
         blocks.forEach(function (block) {
@@ -3575,35 +3562,12 @@
             var w = Math.sqrt(A * ar);
             var h = w / ar;
 
-            if (ar > 2.0) {
-              var panoMaxW = 0.88 * vw;
-              if (w > panoMaxW) {
-                w = panoMaxW;
-                h = w / ar;
-              }
-              if (h > maxH) {
-                h = maxH;
-                w = h * ar;
-              }
-            } else {
-              if (w > maxW) {
-                w = maxW;
-                h = w / ar;
-              }
-              if (h > maxH) {
-                h = maxH;
-                w = h * ar;
-              }
-              if (h < minH) {
-                h = minH;
-                w = h * ar;
-              }
-              if (w > maxW) {
-                w = maxW;
-                h = w / ar;
-              }
-            }
+            if (w > maxW) { w = maxW; h = w / ar; }
+            if (h > maxH) { h = maxH; w = h * ar; }
+            if (h < minH) { h = minH; w = h * ar; }
+            if (w > maxW) { w = maxW; h = w / ar; }
 
+            // Never upscale beyond natural pixel size
             if (img && img.naturalWidth > 0 && img.naturalHeight > 0) {
               if (w > img.naturalWidth || h > img.naturalHeight) {
                 var scale = Math.min(img.naturalWidth / w, img.naturalHeight / h);
@@ -3619,37 +3583,38 @@
               img: img,
               ar: ar,
               w: Math.round(w),
-              h: Math.round(h),
-              isLandscape: ar >= 1.15,
-              isPortrait: ar <= 0.85
+              h: Math.round(h)
             };
           });
 
-          photoMeta.forEach(function (item, idx) {
+          // Apply sizes -- item width = photo width exactly
+          photoMeta.forEach(function (item) {
             var media = item.tile.querySelector('.tile-media');
             if (media) {
               media.style.width = item.w + 'px';
               media.style.height = item.h + 'px';
-
-              var prev = photoMeta[idx - 1];
-              var next = photoMeta[idx + 1];
-              var hasMixed = (prev && ((item.isLandscape && prev.isPortrait) || (item.isPortrait && prev.isLandscape))) ||
-                             (next && ((item.isLandscape && next.isPortrait) || (item.isPortrait && next.isLandscape)));
-
-              if (hasMixed && (idx % 2 === 1)) {
-                media.style.transform = 'translate3d(0, 14px, 0)';
-              } else {
-                media.style.transform = 'translate3d(0, 0, 0)';
-              }
+            }
+            // Set explicit width/height on image so nothing collapses to zero
+            if (item.img) {
+              item.img.style.width = item.w + 'px';
+              item.img.style.height = item.h + 'px';
+              item.img.setAttribute('loading', 'eager');
+              item.img.setAttribute('decoding', 'async');
             }
           });
 
+          // Compute track width: sum of item widths + gaps + side paddings
           var curTransform = strip.style.transform;
           strip.style.transform = 'none';
           var stripWidth = strip.scrollWidth;
           strip.style.transform = curTransform;
 
-          var maxScroll = Math.max(0, stripWidth - vw);
+          var maxScroll = Math.max(0, stripWidth - vw + 40);
+          // Clamp: at most trackWidth - vw + 40
+          var trackMinusVw = stripWidth - vw;
+          if (trackMinusVw < 0) trackMinusVw = 0;
+          maxScroll = Math.min(maxScroll, trackMinusVw + 40);
+
           block.style.height = (maxScroll + svh) + 'px';
           block.dataset.maxScroll = maxScroll;
 
@@ -3695,7 +3660,19 @@
           mobilePortfolio.style.display = 'block';
           originalGrid.style.display = 'none';
           isMobileActive = true;
+
+          // Force all strip images visible and eager
+          mobilePortfolio.querySelectorAll('.cat-strip .tile img').forEach(function (img) {
+            img.style.opacity = '1';
+            img.setAttribute('loading', 'eager');
+            img.setAttribute('decoding', 'async');
+          });
         }
+
+        // Set bar height CSS var
+        var barEl = document.getElementById('bar');
+        var barH = barEl ? barEl.offsetHeight : 52;
+        document.documentElement.style.setProperty('--bar-h', barH + 'px');
 
         var motionReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         if (motionReduced) {
